@@ -181,9 +181,9 @@ if __name__ == '__main__':
     parser.add_argument("--ckpt", type=str, default="siamese_signature_model.pth", help="checkpoint")
     args = parser.parse_args()
     
-    # train_siamese_network(args.base_dir, num_epochs=10, batch_size=8, lr=0.001)
+    train_siamese_network(args.base_dir, num_epochs=30, batch_size=8, lr=0.001)
     
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = SiameseNetwork().to(device)
-    get_average_embedding(args.base_dir, args.proto_dir, model)
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # model = SiameseNetwork().to(device)
+    # get_average_embedding(args.base_dir, args.proto_dir, model)
 

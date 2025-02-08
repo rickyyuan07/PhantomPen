@@ -28,7 +28,7 @@ class SignatureAuth():
     def __init__(self, ckpt_path=None):
         self.encoder = Encoder(ckpt_path)
         self.encoder.eval()
-        self.threshold = 0.85
+        self.threshold = 0.80
 
         self._transform = transforms.Compose([
             transforms.Resize((224, 224)),  # Resize to MobileNetV2 input size

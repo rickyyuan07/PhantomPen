@@ -158,7 +158,7 @@ class PhantomPen:
             if landmarks:
                 finger, thumb = landmarks[8], landmarks[4]
                 # if the user is pinching the thumb and index finger
-                if np.hypot(thumb[1] - finger[1], thumb[2] - finger[2]) < 18:
+                if np.hypot(thumb[1] - finger[1], thumb[2] - finger[2]) < 20:
                     # Using the mean distance between the thumb and index finger
                     x1, y1 = (thumb[1] + finger[1]) // 2, (thumb[2] + finger[2]) // 2
                     self.points[-1].append((x1, y1))
@@ -168,12 +168,15 @@ class PhantomPen:
 
             frame = cv2.bitwise_or(frame, self.canvas)
 
-            cv2.putText(frame, f'Username: {self.args.name}', (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
+            cv2.putText(frame, f'Username: {self.args.name}', (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             # Display FPS
             curr_time = time.time()
             fps = int(1 / (curr_time - self.past_time))
             self.past_time = curr_time
-            cv2.putText(frame, f'FPS: {fps}', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
+            cv2.putText(frame, f'FPS: {fps}', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+
+            cv2.putText(frame, f"Press 'c' to clear", (350, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+            cv2.putText(frame, f"Press 's' to save", (350, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
 
             cv2.imshow("PhantomPen", frame)
 
