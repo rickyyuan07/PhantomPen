@@ -8,7 +8,7 @@ pip install -r requirements.txt
 ## Usage
 To collect signatures sample, run this script
 ```
-python3 simply_draw.py --name <your_name>
+python3 simple_draw.py --name <your_name>
 ```
 Touch your thumb and index fingertips together to start drawing.
 Separate fingertips to stop.  
