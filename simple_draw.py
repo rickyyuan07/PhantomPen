@@ -88,6 +88,26 @@ class PhantomPen:
             signature_dir = os.path.join(self.args.signature_dir, self.args.name, f"{self.args.signature_idx}.npy")
             np.save(signature_dir, signature)
 
+            # Convert the image to RGBA format
+            image_rgba = cv2.cvtColor(signature, cv2.COLOR_BGR2RGBA)
+
+            # Step 3: Identify black background pixels (BGR = (0, 0, 0))
+            black_mask = (image_rgba[:, :, 0] == 0) & (image_rgba[:, :, 1] == 0) & (image_rgba[:, :, 2] == 0)
+
+            # Step 4: Set black background pixels to transparent
+            image_rgba[black_mask] = [0, 0, 0, 0]
+
+            # Step 1: Identify green pixels (exact match: BGR = (0, 255, 0))
+            green_mask = (signature[:, :, 0] == 0) & (signature[:, :, 1] == 255) & (signature[:, :, 2] == 0)
+
+            # Step 2: Replace green pixels with black (fully opaque)
+            image_rgba[green_mask] = [0, 0, 0, 255]
+
+            # Save the resulting image as a PNG with transparency
+            signature_dir2 = os.path.join(self.args.signature_dir, self.args.name, f"{self.args.signature_idx}.png")
+
+            cv2.imwrite(signature_dir2, image_rgba)
+
             self.reset_canvas()
             self.args.signature_idx += 1
         except:
