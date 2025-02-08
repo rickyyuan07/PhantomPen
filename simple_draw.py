@@ -47,9 +47,8 @@ class PhantomPen:
             return
         
         smooth_points = []
-        for i in range(1, len(self.points[-1]) - 2):
-            smooth_points = self.catmull_rom_spline(self.points[-1][i-1], self.points[-1][i], self.points[-1][i+1], self.points[-1][i+2])
-
+        # Calculate Catmull-Rom spline only for the last 4 points
+        smooth_points = self.catmull_rom_spline(*self.points[-1][-4:])
 
         if len(smooth_points) > 1:
             cv2.polylines(self.canvas, [np.array(smooth_points, np.int32)], isClosed=False, color=(0, 255, 0), thickness=2)
