@@ -172,6 +172,8 @@ class PhantomPen:
             self.past_time = curr_time
             cv2.putText(frame, f'FPS: {fps}', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
 
+            cv2.putText(frame, f'Username: {self.args.name}', (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
+
             cv2.imshow("PhantomPen", frame)
 
             key = cv2.waitKey(1) & 0xFF
