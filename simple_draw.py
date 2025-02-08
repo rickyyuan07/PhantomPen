@@ -23,6 +23,7 @@ class PhantomPen:
         self.hands = self.mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.7)
         self.mp_draw = mp.solutions.drawing_utils
 
+        self.phantom = args.phantom
         self.style = args.style
         # Define colors for different styles
         colors = {
@@ -57,9 +58,12 @@ class PhantomPen:
         
         # Calculate Catmull-Rom spline only for the last 4 points
         smooth_points = self.catmull_rom_spline(*self.points[-1][-4:])
-
         temp_canvas = np.zeros_like(self.canvas)  # Create a temporary canvas
 
+        # Draw plain signature strokes
+        cv2.polylines(self.signature, [np.array(smooth_points, np.int32)], isClosed=False, color=(255, 255, 255), thickness=2)
+
+        # Draw strokes on the temporary canvas for different styles
         cv2.polylines(temp_canvas, [np.array(smooth_points, np.int32)], isClosed=False, color=self.color, thickness=2)
 
         # Apply different glow effects
@@ -69,9 +73,11 @@ class PhantomPen:
 
             # Increase intensity for different effects
             glow_intensity = 1.3 if self.style == "glow" else 1.7
-            self.canvas = cv2.addWeighted(self.canvas, 1.0, glow, glow_intensity, 0)
+            if self.phantom:
+                self.canvas = cv2.addWeighted(self.canvas, 0.9, glow, glow_intensity, 0)
+            else:
+                self.canvas = cv2.addWeighted(self.canvas, 1.0, glow, glow_intensity, 0)
 
-        
         # Draw the original strokes again for sharper effect
         cv2.polylines(self.canvas, [np.array(smooth_points, np.int32)], isClosed=False, color=self.color, thickness=2)
 
@@ -95,56 +101,50 @@ class PhantomPen:
     def reset_canvas(self):
         """Clear the drawing canvas"""
         self.canvas = np.zeros(self.CANVAS_SHAPE, np.uint8)
+        self.signature = np.zeros(self.CANVAS_SHAPE, np.uint8)
         self.points = [[]]
 
     def save_signature(self,):
         try:
             ## DEBUG, store self.canvas
             # cv2.imwrite(f"signatures/{self.args.name}_{self.args.signature_idx}.png", self.canvas)
+            # cv2.imwrite(f"signatures/{self.args.name}_{self.args.signature_idx}_signature.png", self.signature)
             ## DEBUG
 
             # Identify non-black pixel regions
             any_x = np.flatnonzero(np.any(self.canvas, axis=(1, 2)))
             any_y = np.flatnonzero(np.any(self.canvas, axis=(0, 2)))
 
-            # Ensure there is a valid drawing before processing
             if any_x.size == 0 or any_y.size == 0:
                 print("No signature found to save.")
                 return
 
-            # Crop to bounding box of the drawing
+            # Crop to bounding box of the signature
             min_x, max_x = any_x[0], any_x[-1] + 1
             min_y, max_y = any_y[0], any_y[-1] + 1
-            signature = self.canvas[min_x:max_x, min_y:max_y, :]
+            signature = self.signature[min_x:max_x, min_y:max_y, :]
 
-            # Convert green pixels (drawing color) to white
-            mask = np.all(signature == self.color, axis=-1)  # Identify green pixels
-            signature[mask] = [255, 255, 255]  # Change green to white
+            # Convert signature strokes to white (everything else transparent)
+            mask = np.any(signature > 0, axis=-1)  # Detect non-black pixels
+            signature_rgba = np.zeros((*signature.shape[:2], 4), dtype=np.uint8)
+            signature_rgba[mask] = [255, 255, 255, 255]  # White strokes on transparent background
 
-            # Display the signature preview
-            cv2.imshow(f"Signature - {self.args.name} {self.args.signature_idx}", signature)
-
-            # Create the directory if it doesn't exist
             user_signature_dir = os.path.join(self.args.signature_dir, self.args.name)
             os.makedirs(user_signature_dir, exist_ok=True)
 
             # Save as .npy file
             npy_path = os.path.join(user_signature_dir, f"{self.args.signature_idx}.npy")
-            np.save(npy_path, signature)
-
-            # Convert to RGBA for transparency
-            image_rgba = cv2.cvtColor(signature, cv2.COLOR_BGR2RGBA)
-            image_rgba[mask] = [255, 255, 255, 255]  # White for the signature
-            image_rgba[~mask] = [0, 0, 0, 0]  # Transparent background
+            np.save(npy_path, signature_rgba)
 
             # Save as PNG with transparency
             png_path = os.path.join(user_signature_dir, f"{self.args.signature_idx}.png")
-            cv2.imwrite(png_path, image_rgba)
+            cv2.imwrite(png_path, signature_rgba)
 
-            # Reset the canvas and increment index
+            # Display the saved signature
+            cv2.imshow(f"Signature - {self.args.name} {self.args.signature_idx}", signature)
+
             self.reset_canvas()
             self.args.signature_idx += 1
-
             print(f"Signature saved at {png_path}")
 
         except Exception as e:
@@ -195,6 +195,7 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--name", type=str, default="user", help="the name of the user")
     parser.add_argument("-s", "--signature_dir", type=str, default="signatures", help="Directory to store signatures")
     parser.add_argument("-st", "--style", type=str, choices=["glow", "neon_blue", "fire"], default="glow", help="Drawing style")
+    parser.add_argument("-p", "--phantom", action="store_true", help="Enable phantom effect")
     args = parser.parse_args()
     
     user_dir = os.path.join(args.signature_dir, args.name)
