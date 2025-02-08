@@ -42,10 +42,13 @@ class PhantomPen:
         """Draw smooth curves using Catmull-Rom splines."""
         if len(self.points) < 4:
             return
+        
+        smooth_points = []
         for i in range(1, len(self.points) - 2):
-            smooth_points = self.catmull_rom_spline(self.points[i-1], self.points[i], self.points[i+1], self.points[i+2])
-            for j in range(1, len(smooth_points)):
-                cv2.line(self.canvas, smooth_points[j-1], smooth_points[j], (0, 255, 0), 2, cv2.LINE_AA)
+            smooth_points.extend(self.catmull_rom_spline(self.points[i-1], self.points[i], self.points[i+1], self.points[i+2]))
+
+        if len(smooth_points) > 1:
+            cv2.polylines(self.canvas, [np.array(smooth_points, np.int32)], isClosed=False, color=(0, 255, 0), thickness=2)
 
     def process_frame(self, frame):
         """Process frame to detect hand landmarks and draw on canvas"""
