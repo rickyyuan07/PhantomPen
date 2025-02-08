@@ -33,6 +33,7 @@ class PhantomPen:
         self.color = colors.get(self.style, (0, 255, 0))
 
         self.canvas = np.zeros(self.CANVAS_SHAPE, np.uint8)  # Canvas to write on (with effects)
+        self.signature = np.zeros(self.CANVAS_SHAPE, np.uint8)  # Canvas to store signatures (pure black and white)
         self.points = [[]]  # Stores drawing points
         self.past_time = time.time()  # For FPS calculation
 
@@ -98,32 +99,56 @@ class PhantomPen:
 
     def save_signature(self,):
         try:
-            any_x = np.flatnonzero(np.any(self.canvas, axis=(1,2)))
-            any_y = np.flatnonzero(np.any(self.canvas, axis=(0,2)))
-            min_x, max_x = any_x[0], any_x[-1]
-            min_y, max_y = any_y[0], any_y[-1]
+            ## DEBUG, store self.canvas
+            # cv2.imwrite(f"signatures/{self.args.name}_{self.args.signature_idx}.png", self.canvas)
+            ## DEBUG
+
+            # Identify non-black pixel regions
+            any_x = np.flatnonzero(np.any(self.canvas, axis=(1, 2)))
+            any_y = np.flatnonzero(np.any(self.canvas, axis=(0, 2)))
+
+            # Ensure there is a valid drawing before processing
+            if any_x.size == 0 or any_y.size == 0:
+                print("No signature found to save.")
+                return
+
+            # Crop to bounding box of the drawing
+            min_x, max_x = any_x[0], any_x[-1] + 1
+            min_y, max_y = any_y[0], any_y[-1] + 1
             signature = self.canvas[min_x:max_x, min_y:max_y, :]
 
-            mask = np.all(signature == [0, 255, 0], axis=-1)  # Find all green pixels
-            signature[mask] = [255, 255, 255]  # Convert green to white
+            # Convert green pixels (drawing color) to white
+            mask = np.all(signature == self.color, axis=-1)  # Identify green pixels
+            signature[mask] = [255, 255, 255]  # Change green to white
 
-            cv2.imshow(f"{self.args.name} {self.args.signature_idx}", signature)
-            signature_dir = os.path.join(self.args.signature_dir, self.args.name, f"{self.args.signature_idx}.npy")
-            np.save(signature_dir, signature)
+            # Display the signature preview
+            cv2.imshow(f"Signature - {self.args.name} {self.args.signature_idx}", signature)
 
-            # Convert the image to RGBA format
+            # Create the directory if it doesn't exist
+            user_signature_dir = os.path.join(self.args.signature_dir, self.args.name)
+            os.makedirs(user_signature_dir, exist_ok=True)
+
+            # Save as .npy file
+            npy_path = os.path.join(user_signature_dir, f"{self.args.signature_idx}.npy")
+            np.save(npy_path, signature)
+
+            # Convert to RGBA for transparency
             image_rgba = cv2.cvtColor(signature, cv2.COLOR_BGR2RGBA)
-            image_rgba[~mask] = [0, 0, 0, 0]
+            image_rgba[mask] = [255, 255, 255, 255]  # White for the signature
+            image_rgba[~mask] = [0, 0, 0, 0]  # Transparent background
 
-            # Save the resulting image as a PNG with transparency
-            signature_dir2 = os.path.join(self.args.signature_dir, self.args.name, f"{self.args.signature_idx}.png")
+            # Save as PNG with transparency
+            png_path = os.path.join(user_signature_dir, f"{self.args.signature_idx}.png")
+            cv2.imwrite(png_path, image_rgba)
 
-            cv2.imwrite(signature_dir2, image_rgba)
-
+            # Reset the canvas and increment index
             self.reset_canvas()
             self.args.signature_idx += 1
-        except:
-            pass
+
+            print(f"Signature saved at {png_path}")
+
+        except Exception as e:
+            print(f"Error saving signature: {e}")
 
     def run(self):
         while True:
@@ -169,7 +194,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simple draw & signature collection app")
     parser.add_argument("-n", "--name", type=str, default="user", help="the name of the user")
     parser.add_argument("-s", "--signature_dir", type=str, default="signatures", help="Directory to store signatures")
-    parser.add_argument("-st", "--style", type=str, default="glow", help="Stroke style (glow, neon_blue, fire)")
+    parser.add_argument("-st", "--style", type=str, choices=["glow", "neon_blue", "fire"], default="glow", help="Drawing style")
     args = parser.parse_args()
     
     user_dir = os.path.join(args.signature_dir, args.name)
