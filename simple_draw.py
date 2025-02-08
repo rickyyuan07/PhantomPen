@@ -26,8 +26,7 @@ class PhantomPen:
 
         self.canvas = np.zeros(self.CANVAS_SHAPE, np.uint8)
         self.points = [[]]  # Stores drawing points
-        self.prev_x, self.prev_y = 0, 0
-        self.past_time = time.time()
+        self.past_time = time.time()  # For FPS calculation
 
     def catmull_rom_spline(self, P0, P1, P2, P3, num_points=20):
         """Compute Catmull-Rom spline between P1 and P2."""
@@ -122,12 +121,14 @@ class PhantomPen:
             frame, landmarks = self.process_frame(frame)
 
             if landmarks:
-                if np.hypot(landmarks[4][1] - landmarks[8][1], landmarks[4][2] - landmarks[8][2]) < 25:
-                    # Using index finger tip (landmark id 8)
-                    x1, y1 = landmarks[8][1], landmarks[8][2]
+                finger, thumb = landmarks[8], landmarks[4]
+                # if the user is pinching the thumb and index finger
+                if np.hypot(thumb[1] - finger[1], thumb[2] - finger[2]) < 20:
+                    # Using the mean distance between the thumb and index finger
+                    x1, y1 = (thumb[1] + finger[1]) // 2, (thumb[2] + finger[2]) // 2
                     self.points[-1].append((x1, y1))
                     self.smooth_draw()
-                else:
+                elif self.points[-1]:
                     self.points.append([])
 
             frame = cv2.bitwise_or(frame, self.canvas)
