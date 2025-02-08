@@ -4,7 +4,6 @@ import mediapipe as mp
 import numpy as np
 import time
 import argparse
-import pdb
 
 class PhantomPen:
     FRAME_WIDTH, FRAME_HEIGHT = 640, 480
@@ -82,24 +81,17 @@ class PhantomPen:
             min_x, max_x = any_x[0], any_x[-1]
             min_y, max_y = any_y[0], any_y[-1]
             signature = self.canvas[min_x:max_x, min_y:max_y, :]
+
+            mask = np.all(signature == [0, 255, 0], axis=-1)  # Find all green pixels
+            signature[mask] = [255, 255, 255]  # Convert green to white
+
             cv2.imshow(f"{self.args.name} {self.args.signature_idx}", signature)
             signature_dir = os.path.join(self.args.signature_dir, self.args.name, f"{self.args.signature_idx}.npy")
             np.save(signature_dir, signature)
 
             # Convert the image to RGBA format
             image_rgba = cv2.cvtColor(signature, cv2.COLOR_BGR2RGBA)
-
-            # Step 3: Identify black background pixels (BGR = (0, 0, 0))
-            black_mask = (image_rgba[:, :, 0] == 0) & (image_rgba[:, :, 1] == 0) & (image_rgba[:, :, 2] == 0)
-
-            # Step 4: Set black background pixels to transparent
-            image_rgba[black_mask] = [0, 0, 0, 0]
-
-            # Step 1: Identify green pixels (exact match: BGR = (0, 255, 0))
-            green_mask = (signature[:, :, 0] == 0) & (signature[:, :, 1] == 255) & (signature[:, :, 2] == 0)
-
-            # Step 2: Replace green pixels with black (fully opaque)
-            image_rgba[green_mask] = [0, 0, 0, 255]
+            image_rgba[~mask] = [0, 0, 0, 0]
 
             # Save the resulting image as a PNG with transparency
             signature_dir2 = os.path.join(self.args.signature_dir, self.args.name, f"{self.args.signature_idx}.png")
@@ -160,10 +152,10 @@ if __name__ == "__main__":
     user_dir = os.path.join(args.signature_dir, args.name)
     os.makedirs(user_dir, exist_ok=True)  # Create directory if it doesn't exist
 
-    files = os.listdir(user_dir)
+    files = [f for f in os.listdir(user_dir) if f.endswith(".npy")]
     args.signature_idx = 0
     if files:
-        args.signature_idx = int(os.path.splitext(max(files))[0]) + 1
+        args.signature_idx = max([int(os.path.splitext(f)[0]) for f in files]) + 1
     print(args.signature_idx)
 
     app = PhantomPen(args)
