@@ -2,7 +2,6 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import time
-from multiprocessing import Process, Queue
 from collections import deque
 
 class PhantomPen:
@@ -11,9 +10,12 @@ class PhantomPen:
 
     def __init__(self):
         """Initialize camera, Mediapipe, and canvas"""
-        self.frame_queue = Queue()
-        self.capture_process = Process(target=self.capture_frames, args=(self.frame_queue,))
-        self.capture_process.start()
+        self.cap = cv2.VideoCapture(0)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.FRAME_WIDTH)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.FRAME_HEIGHT)
+        self.cap.set(cv2.CAP_PROP_BRIGHTNESS, 150)  # Set brightness
+        self.cap.set(cv2.CAP_PROP_FPS, 60)
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.7)
@@ -23,20 +25,6 @@ class PhantomPen:
         self.points = deque(maxlen=1024)  # Stores drawing points
         self.prev_x, self.prev_y = 0, 0
         self.past_time = time.time()
-
-    def capture_frames(self, queue):
-        """Captures frames asynchronously using multiprocessing"""
-        cap = cv2.VideoCapture(0)
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.FRAME_WIDTH)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.FRAME_HEIGHT)
-        cap.set(cv2.CAP_PROP_BRIGHTNESS, 150)  # Set brightness
-        cap.set(cv2.CAP_PROP_FPS, 60)
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1) # set buffer size to 1 to reduce latency
-
-        while True:
-            ret, frame = cap.read()
-            if ret:
-                queue.put(frame)
 
     def catmull_rom_spline(self, P0, P1, P2, P3, num_points=20):
         """Compute Catmull-Rom spline between P1 and P2."""
@@ -89,36 +77,38 @@ class PhantomPen:
 
     def run(self):
         while True:
-            if not self.frame_queue.empty():
-                frame = self.frame_queue.get()
-                frame, landmarks = self.process_frame(frame)
+            ret, frame = self.cap.read()
+            if not ret:
+                break
 
-                if landmarks:
-                    x1, y1 = landmarks[8][1], landmarks[8][2]  # Index finger tip
-                    if self.prev_x == 0 and self.prev_y == 0:
-                        self.prev_x, self.prev_y = x1, y1
-                    self.points.append((x1, y1))
-                    self.smooth_draw()
+            frame, landmarks = self.process_frame(frame)
 
-                self.draw_on_frame(frame)
+            if landmarks:
+                # Using index finger tip (landmark id 8)
+                x1, y1 = landmarks[8][1], landmarks[8][2]
+                if self.prev_x == 0 and self.prev_y == 0:
+                    self.prev_x, self.prev_y = x1, y1
+                self.points.append((x1, y1))
+                self.smooth_draw()
 
-                # Display FPS
-                curr_time = time.time()
-                fps = int(1 / (curr_time - self.past_time))
-                self.past_time = curr_time
-                cv2.putText(frame, f'FPS: {fps}', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
+            self.draw_on_frame(frame)
 
-                cv2.imshow("PhantomPen", frame)
+            # Display FPS
+            curr_time = time.time()
+            fps = int(1 / (curr_time - self.past_time))
+            self.past_time = curr_time
+            cv2.putText(frame, f'FPS: {fps}', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
 
-                # Key press handling
-                key = cv2.waitKey(1) & 0xFF
-                if key == ord('c'):  # Clear canvas
-                    self.reset_canvas()
-                elif key == ord('q'):  # Quit
-                    break
+            cv2.imshow("PhantomPen", frame)
+
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('c'):  # Clear canvas
+                self.reset_canvas()
+            elif key == ord('q'):  # Quit
+                break
 
         cv2.destroyAllWindows()
-        self.capture_process.terminate()
+        self.cap.release()
 
 if __name__ == "__main__":
     app = PhantomPen()
