@@ -2,15 +2,31 @@ import os
 from simple_draw import PhantomPen
 import argparse
 import tkinter as tk
-from simple_gui import SimpleGUI
+from tkinter import messagebox, simpledialog
+# from simple_gui import SimpleGUI
 from authenticator import SignatureAuth
 
 
 def start_gui(is_authenticated):
-    """Start the GUI application."""
+    """Start the GUI application and show authentication result."""
     window = tk.Tk()
-    app = SimpleGUI(window, is_authenticated)
-    window.mainloop()
+    window.withdraw()  # Hide the root window
+
+    if is_authenticated:
+        messagebox.showinfo("Authentication", "Login Successful! 🎉")
+    else:
+        messagebox.showerror("Authentication", "Login Failed! ❌")
+
+    window.destroy()
+
+
+def get_username():
+    """Prompt the user for their name using a GUI input box."""
+    root = tk.Tk()
+    root.withdraw()  # Hide the root window
+    name = simpledialog.askstring("User Authentication", "Enter your name:")
+    root.destroy()
+    return name
 
 
 if __name__ == "__main__":
@@ -27,14 +43,16 @@ if __name__ == "__main__":
     parser.add_argument("--base_dir", type=str, default="signatures", help="Path to the signature prototypes")
     parser.add_argument("--proto_dir", type=str, default="signatures/prototypes", help="Path to the signature prototypes")
     args = parser.parse_args()
-    args.signature_dir = "./test/"
+    args.signature_dir = "./test/"  # Temporary directory for signature collection
     args.signature_idx = 0
-    args.pipeline = True
+    args.pipeline = True  # Ensure pipeline mode is enabled
 
-    # Get user name from user
-    # Some GUI code to get the user name
-    # TODO
-    args.name = input("Enter your name: ")
+    # Get user name via GUI input
+    args.name = get_username()
+    if not args.name:  # If the user cancels input, exit
+        print("No name entered. Exiting...")
+        exit(1)
+
     user_dir = os.path.join(args.signature_dir, args.name)
     os.makedirs(user_dir, exist_ok=True)  # Create directory if it doesn't exist
 
@@ -50,7 +68,6 @@ if __name__ == "__main__":
     new_img_path = os.path.join(user_dir, "0.npy")
     authenticated = auth.challenge_npy(representative_npy_path, new_img_path)
 
-    # Pop-up login success or failure message (GUI)
-    # TODO
+    # Show authentication result in a pop-up window
     start_gui(authenticated)
     
