@@ -1,14 +1,17 @@
+import os
 import cv2
 import mediapipe as mp
 import numpy as np
 import time
+import argparse
 import pdb
 
 class PhantomPen:
     FRAME_WIDTH, FRAME_HEIGHT = 640, 480
     CANVAS_SHAPE = (FRAME_HEIGHT, FRAME_WIDTH, 3)
 
-    def __init__(self):
+    def __init__(self, args):
+        self.args = args
         """Initialize camera, Mediapipe, and canvas"""
         self.cap = cv2.VideoCapture(0)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.FRAME_WIDTH)
@@ -25,7 +28,6 @@ class PhantomPen:
         self.points = [[]]  # Stores drawing points
         self.prev_x, self.prev_y = 0, 0
         self.past_time = time.time()
-        self.signiture_idx = 0
 
     def catmull_rom_spline(self, P0, P1, P2, P3, num_points=20):
         """Compute Catmull-Rom spline between P1 and P2."""
@@ -75,18 +77,19 @@ class PhantomPen:
         self.canvas = np.zeros(self.CANVAS_SHAPE, np.uint8)
         self.points = [[]]
 
-    def save_signiture(self):
+    def save_signature(self,):
         try:
             any_x = np.flatnonzero(np.any(self.canvas, axis=(1,2)))
             any_y = np.flatnonzero(np.any(self.canvas, axis=(0,2)))
             min_x, max_x = any_x[0], any_x[-1]
             min_y, max_y = any_y[0], any_y[-1]
-            signiture = self.canvas[min_x:max_x, min_y:max_y, :]
-            cv2.imshow(f"Signiture {self.signiture_idx}", signiture)
-            np.save(f"signiture_{self.signiture_idx}.npy", signiture)
+            signature = self.canvas[min_x:max_x, min_y:max_y, :]
+            cv2.imshow(f"{self.args.name} {self.args.signature_idx}", signature)
+            signature_dir = os.path.join(self.args.signature_dir, self.args.name, f"{self.args.signature_idx}.npy")
+            np.save(signature_dir, signature)
 
             self.reset_canvas()
-            self.signiture_idx += 1
+            self.args.signature_idx += 1
         except:
             pass
 
@@ -121,7 +124,7 @@ class PhantomPen:
             if key == ord('c'):  # Clear canvas
                 self.reset_canvas()
             elif key == ord('s'):
-                self.save_signiture()
+                self.save_signature()
             elif key == ord('q'):  # Quit
                 break
 
@@ -129,5 +132,19 @@ class PhantomPen:
         self.cap.release()
 
 if __name__ == "__main__":
-    app = PhantomPen()
+    parser = argparse.ArgumentParser(description="Simple draw & signature collection app")
+    parser.add_argument("-n", "--name", type=str, default="user", help="the name of the user")
+    parser.add_argument("--signature_dir", type=str, default="signatures", help="Directory to store signatures")
+    args = parser.parse_args()
+    
+    user_dir = os.path.join(args.signature_dir, args.name)
+    os.makedirs(user_dir, exist_ok=True)  # Create directory if it doesn't exist
+
+    files = os.listdir(user_dir)
+    args.signature_idx = 0
+    if files:
+        args.signature_idx = int(os.path.splitext(max(files))[0]) + 1
+    print(args.signature_idx)
+
+    app = PhantomPen(args)
     app.run()
