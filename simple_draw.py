@@ -106,11 +106,6 @@ class PhantomPen:
 
     def save_signature(self,):
         try:
-            ## DEBUG, store self.canvas
-            # cv2.imwrite(f"signatures/{self.args.name}_{self.args.signature_idx}.png", self.canvas)
-            # cv2.imwrite(f"signatures/{self.args.name}_{self.args.signature_idx}_signature.png", self.signature)
-            ## DEBUG
-
             # Identify non-black pixel regions
             any_x = np.flatnonzero(np.any(self.canvas, axis=(1, 2)))
             any_y = np.flatnonzero(np.any(self.canvas, axis=(0, 2)))
