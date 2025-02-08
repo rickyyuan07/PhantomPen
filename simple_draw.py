@@ -24,6 +24,7 @@ class PhantomPen:
         self.mp_draw = mp.solutions.drawing_utils
 
         self.phantom = args.phantom
+        self.pipeline = args.pipeline  # Flag to execute from this file or the whole pipeline
         self.style = args.style
         # Define colors for different styles
         colors = {
@@ -136,7 +137,8 @@ class PhantomPen:
             cv2.imwrite(png_path, signature_rgba)
 
             # Display the saved signature
-            cv2.imshow(f"Signature - {self.args.name} {self.args.signature_idx}", signature)
+            if not self.pipeline:
+                cv2.imshow(f"Signature - {self.args.name} {self.args.signature_idx}", signature)
 
             self.reset_canvas()
             self.args.signature_idx += 1
@@ -166,13 +168,12 @@ class PhantomPen:
 
             frame = cv2.bitwise_or(frame, self.canvas)
 
+            cv2.putText(frame, f'Username: {self.args.name}', (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
             # Display FPS
             curr_time = time.time()
             fps = int(1 / (curr_time - self.past_time))
             self.past_time = curr_time
             cv2.putText(frame, f'FPS: {fps}', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
-
-            cv2.putText(frame, f'Username: {self.args.name}', (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
 
             cv2.imshow("PhantomPen", frame)
 
@@ -181,6 +182,8 @@ class PhantomPen:
                 self.reset_canvas()
             elif key == ord('s'):
                 self.save_signature()
+                if self.pipeline:
+                    break
             elif key == ord('q'):  # Quit
                 break
 
@@ -194,6 +197,7 @@ if __name__ == "__main__":
     parser.add_argument("-st", "--style", type=str, choices=["glow", "neon_blue", "fire"], default="glow", help="Drawing style")
     parser.add_argument("-p", "--phantom", action="store_true", help="Enable phantom effect")
     args = parser.parse_args()
+    args.pipeline = False
     
     user_dir = os.path.join(args.signature_dir, args.name)
     os.makedirs(user_dir, exist_ok=True)  # Create directory if it doesn't exist
