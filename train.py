@@ -4,9 +4,12 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import random
+import argparse
+
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
+import pdb
 
 class SiameseNetwork(nn.Module):
     def __init__(self):
@@ -38,27 +41,60 @@ class ContrastiveLoss(nn.Module):
         return loss.mean()
 
 class SignatureDataset(Dataset):
-    def __init__(self, real_dir, fake_dir, transform=None):
-        self.real_images = [os.path.join(real_dir, f) for f in os.listdir(real_dir) if f.endswith('.npy')]
-        self.fake_images = [os.path.join(fake_dir, f) for f in os.listdir(fake_dir) if f.endswith('.npy')]
+    def __init__(self, base_dir, transform=None):
+        # self.real_images = [os.path.join(real_dir, f) for f in os.listdir(real_dir) if f.endswith('.npy')]
+        # self.fake_images = [os.path.join(fake_dir, f) for f in os.listdir(fake_dir) if f.endswith('.npy')]
+        self.base_dir = base_dir
+        self.users = os.listdir(os.path.join(base_dir, "real"))
+
+        self.real_images = {user: self.get_image_list("real", user) for user in self.users}
+        self.fake_images = {user: self.get_image_list("fake", user) for user in self.users}
+
+        self.pairs = self.generate_pairs()
         self.transform = transform
 
+    def get_image_list(self, category, user):
+        """ Returns a list of .npy file paths for a given category (real/fake) and user. """
+        user_path = os.path.join(self.base_dir, category, user)
+        return [os.path.join(user_path, f) for f in os.listdir(user_path) if f.endswith(".npy")]
+
+    def generate_pairs(self):
+        """ Generates positive and negative pairs based on the dataset structure. """
+        print("Generating pos/neg pairs")
+        pairs = []
+
+        for user in self.users:
+            real_images = self.real_images[user]
+            fake_images = self.fake_images[user]
+
+            # Positive pairs: (real/user, real/user)
+            if len(real_images) > 1:
+                pairs.extend([(random.choice(real_images), random.choice(real_images), 1) for _ in range(10)])
+
+            # Negative pairs: (real/user, fake/user)
+            if real_images and fake_images:
+                pairs.extend([(random.choice(real_images), random.choice(fake_images), 0) for _ in range(10)])
+
+            # Negative pairs: (real/daniel, real/ricky)
+            for other_user in self.users:
+                if user != other_user:
+                    other_real_images = self.real_images[other_user]
+                    if real_images and other_real_images:
+                        pairs.extend([(random.choice(real_images), random.choice(other_real_images), 0) for _ in range(10)])
+
+        return pairs
+
+
     def __len__(self):
-        return min(len(self.real_images), len(self.fake_images)) * 2  # Equal number of pos/neg pairs
+        # return min(len(self.real_images), len(self.fake_images)) * 2  # Equal number of pos/neg pairs
+        return len(self.pairs)
 
     def __getitem__(self, index):
-        if index % 2 == 0:
-            img1_path, img2_path = random.sample(self.real_images, 2)
-            label = 1  # Positive pair
-        else:
-            img1_path = random.choice(self.real_images)
-            img2_path = random.choice(self.fake_images)
-            label = 0  # Negative pair
+        img1_path, img2_path, label = self.pairs[index]
 
         img1 = np.load(img1_path)
         img2 = np.load(img2_path)
 
-        # Convert NumPy arrays to tensors and apply transformations
         img1 = torch.from_numpy(img1).float().permute(2, 0, 1)
         img2 = torch.from_numpy(img2).float().permute(2, 0, 1)
 
@@ -68,8 +104,7 @@ class SignatureDataset(Dataset):
 
         return img1, img2, torch.tensor(label, dtype=torch.float32)
 
-# ------------------ 4️⃣ Training Function ------------------
-def train_siamese_network(real_dir, fake_dir, num_epochs=10, batch_size=8, lr=0.001):
+def train_siamese_network(base_dir, num_epochs=10, batch_size=8, lr=0.001):
     # Define Image Transformations
     transform = transforms.Compose([
         transforms.Resize((224, 224)),  
@@ -77,7 +112,7 @@ def train_siamese_network(real_dir, fake_dir, num_epochs=10, batch_size=8, lr=0.
     ])
 
     # Create Dataset and DataLoader
-    dataset = SignatureDataset(real_dir, fake_dir, transform=transform)
+    dataset = SignatureDataset(base_dir, transform=transform)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     # Initialize Model, Loss, and Optimizer
@@ -103,6 +138,9 @@ def train_siamese_network(real_dir, fake_dir, num_epochs=10, batch_size=8, lr=0.
             total_loss += loss.item()
 
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {total_loss / len(dataloader):.4f}")
+        dataset.generate_pairs()
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
 
     # Save the Model
     model_path = "siamese_signature_model.pth"
@@ -111,10 +149,8 @@ def train_siamese_network(real_dir, fake_dir, num_epochs=10, batch_size=8, lr=0.
 
 # ------------------ 5️⃣ Run Training ------------------
 if __name__ == '__main__':
-    real_dir = "signatures/rickyy"
-    fake_dir = "signatures/ricky"
+    parser = argparse.ArgumentParser(description="Train Siamese Network")
+    parser.add_argument("-b", "--base_dir", type=str, default="signatures/train", help="source directory")
+    args = parser.parse_args()
     
-    if not os.path.exists(real_dir) or not os.path.exists(fake_dir):
-        print("Error: One or both signature directories do not exist.")
-    else:
-        train_siamese_network(real_dir, fake_dir, num_epochs=10, batch_size=8, lr=0.001)
+    train_siamese_network(args.base_dir, num_epochs=10, batch_size=8, lr=0.001)
