@@ -48,7 +48,7 @@ if __name__ == "__main__":
     # auth.challenge_proto(proto_path, args.new_img_path)
     representative_npy_path = os.path.join(args.base_dir, 'train', 'real', args.name, "0.npy")
     new_img_path = os.path.join(user_dir, "0.npy")
-    authenticated = auth.challenge_npy(representative_npy_path, args.new_img_path)
+    authenticated = auth.challenge_npy(representative_npy_path, new_img_path)
 
     # Pop-up login success or failure message (GUI)
     # TODO
