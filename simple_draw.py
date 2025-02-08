@@ -146,7 +146,7 @@ class PhantomPen:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simple draw & signature collection app")
     parser.add_argument("-n", "--name", type=str, default="user", help="the name of the user")
-    parser.add_argument("--signature_dir", type=str, default="signatures", help="Directory to store signatures")
+    parser.add_argument("-s", "--signature_dir", type=str, default="signatures", help="Directory to store signatures")
     args = parser.parse_args()
     
     user_dir = os.path.join(args.signature_dir, args.name)
