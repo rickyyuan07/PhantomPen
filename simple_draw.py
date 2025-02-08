@@ -2,7 +2,6 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import time
-from collections import deque
 
 class PhantomPen:
     FRAME_WIDTH, FRAME_HEIGHT = 640, 480
@@ -22,23 +21,22 @@ class PhantomPen:
         self.mp_draw = mp.solutions.drawing_utils
 
         self.canvas = np.zeros(self.CANVAS_SHAPE, np.uint8)
-        self.points = deque(maxlen=1024)  # Stores drawing points
+        self.points = []
         self.prev_x, self.prev_y = 0, 0
         self.past_time = time.time()
 
     def catmull_rom_spline(self, P0, P1, P2, P3, num_points=20):
         """Compute Catmull-Rom spline between P1 and P2."""
-        curve = []
-        for t in np.linspace(0, 1, num_points):
-            t2, t3 = t * t, t * t * t
-            f1 = -0.5*t3 + t2 - 0.5*t
-            f2 = 1.5*t3 - 2.5*t2 + 1
-            f3 = -1.5*t3 + 2*t2 + 0.5*t
-            f4 = 0.5*t3 - 0.5*t2
-            x = int(P0[0] * f1 + P1[0] * f2 + P2[0] * f3 + P3[0] * f4)
-            y = int(P0[1] * f1 + P1[1] * f2 + P2[1] * f3 + P3[1] * f4)
-            curve.append((x, y))
-        return curve
+        t = np.linspace(0, 1, num_points)
+        t2 = t * t
+        t3 = t2 * t
+        f1 = -0.5 * t3 + t2 - 0.5 * t
+        f2 = 1.5 * t3 - 2.5 * t2 + 1
+        f3 = -1.5 * t3 + 2 * t2 + 0.5 * t
+        f4 = 0.5 * t3 - 0.5 * t2
+        x = (P0[0] * f1 + P1[0] * f2 + P2[0] * f3 + P3[0] * f4).astype(int)
+        y = (P0[1] * f1 + P1[1] * f2 + P2[1] * f3 + P3[1] * f4).astype(int)
+        return list(zip(x, y))
 
     def smooth_draw(self):
         """Draw smooth curves using Catmull-Rom splines."""
