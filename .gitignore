@@ -1,0 +1,7 @@
+# python ignore
+*.pyc
+*.pyo
+__pycache__/
+
+# virtualenv
+.venv/

@@ -104,7 +104,7 @@ class PhantomPen:
         self.signature = np.zeros(self.CANVAS_SHAPE, np.uint8)
         self.points = [[]]
 
-    def save_signature(self,):
+    def save_signature(self):
         try:
             # Identify non-black pixel regions
             any_x = np.flatnonzero(np.any(self.canvas, axis=(1, 2)))
