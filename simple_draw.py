@@ -23,7 +23,16 @@ class PhantomPen:
         self.hands = self.mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.7)
         self.mp_draw = mp.solutions.drawing_utils
 
-        self.canvas = np.zeros(self.CANVAS_SHAPE, np.uint8)
+        self.style = args.style
+        # Define colors for different styles
+        colors = {
+            "glow": (0, 255, 0),
+            "neon_blue": (255, 0, 255),
+            "fire": (0, 165, 255)
+        }
+        self.color = colors.get(self.style, (0, 255, 0))
+
+        self.canvas = np.zeros(self.CANVAS_SHAPE, np.uint8)  # Canvas to write on (with effects)
         self.points = [[]]  # Stores drawing points
         self.past_time = time.time()  # For FPS calculation
 
@@ -40,7 +49,7 @@ class PhantomPen:
         y = (P0[1] * f1 + P1[1] * f2 + P2[1] * f3 + P3[1] * f4).astype(int)
         return list(zip(x, y))
 
-    def smooth_draw(self, style="glow"):
+    def smooth_draw(self):
         """Draw smooth curves using Catmull-Rom splines with different stroke styles."""
         if len(self.points[-1]) < 4:
             return
@@ -49,31 +58,21 @@ class PhantomPen:
         smooth_points = self.catmull_rom_spline(*self.points[-1][-4:])
 
         temp_canvas = np.zeros_like(self.canvas)  # Create a temporary canvas
-        
-        # Define colors for different styles
-        colors = {
-            "glow": (0, 255, 0),
-            "neon_blue": (255, 0, 255),
-            "fire": (0, 165, 255)
-        }
 
-        # Select color
-        stroke_color = colors.get(style, (0, 255, 0))  # Default to green glow
-
-        cv2.polylines(temp_canvas, [np.array(smooth_points, np.int32)], isClosed=False, color=stroke_color, thickness=2)
+        cv2.polylines(temp_canvas, [np.array(smooth_points, np.int32)], isClosed=False, color=self.color, thickness=2)
 
         # Apply different glow effects
-        if style in ["glow", "neon_blue", "fire"]:
-            blur_amount = 15 if style == "glow" else 25  # More blur for neon
+        if self.style in ["glow", "neon_blue", "fire"]:
+            blur_amount = 15 if self.style == "glow" else 25  # More blur for neon
             glow = cv2.GaussianBlur(temp_canvas, (blur_amount, blur_amount), blur_amount)
 
             # Increase intensity for different effects
-            glow_intensity = 1.3 if style == "glow" else 1.7
+            glow_intensity = 1.3 if self.style == "glow" else 1.7
             self.canvas = cv2.addWeighted(self.canvas, 1.0, glow, glow_intensity, 0)
 
         
         # Draw the original strokes again for sharper effect
-        cv2.polylines(self.canvas, [np.array(smooth_points, np.int32)], isClosed=False, color=stroke_color, thickness=2)
+        cv2.polylines(self.canvas, [np.array(smooth_points, np.int32)], isClosed=False, color=self.color, thickness=2)
 
     def process_frame(self, frame):
         """Process frame to detect hand landmarks and draw on canvas"""
@@ -137,7 +136,7 @@ class PhantomPen:
             if landmarks:
                 finger, thumb = landmarks[8], landmarks[4]
                 # if the user is pinching the thumb and index finger
-                if np.hypot(thumb[1] - finger[1], thumb[2] - finger[2]) < 15:
+                if np.hypot(thumb[1] - finger[1], thumb[2] - finger[2]) < 18:
                     # Using the mean distance between the thumb and index finger
                     x1, y1 = (thumb[1] + finger[1]) // 2, (thumb[2] + finger[2]) // 2
                     self.points[-1].append((x1, y1))
@@ -170,6 +169,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simple draw & signature collection app")
     parser.add_argument("-n", "--name", type=str, default="user", help="the name of the user")
     parser.add_argument("-s", "--signature_dir", type=str, default="signatures", help="Directory to store signatures")
+    parser.add_argument("-st", "--style", type=str, default="glow", help="Stroke style (glow, neon_blue, fire)")
     args = parser.parse_args()
     
     user_dir = os.path.join(args.signature_dir, args.name)
