@@ -40,17 +40,40 @@ class PhantomPen:
         y = (P0[1] * f1 + P1[1] * f2 + P2[1] * f3 + P3[1] * f4).astype(int)
         return list(zip(x, y))
 
-    def smooth_draw(self):
-        """Draw smooth curves using Catmull-Rom splines."""
+    def smooth_draw(self, style="glow"):
+        """Draw smooth curves using Catmull-Rom splines with different stroke styles."""
         if len(self.points[-1]) < 4:
             return
         
-        smooth_points = []
         # Calculate Catmull-Rom spline only for the last 4 points
         smooth_points = self.catmull_rom_spline(*self.points[-1][-4:])
 
-        if len(smooth_points) > 1:
-            cv2.polylines(self.canvas, [np.array(smooth_points, np.int32)], isClosed=False, color=(0, 255, 0), thickness=2)
+        temp_canvas = np.zeros_like(self.canvas)  # Create a temporary canvas
+        
+        # Define colors for different styles
+        colors = {
+            "glow": (0, 255, 0),
+            "neon_blue": (255, 0, 255),
+            "fire": (0, 165, 255)
+        }
+
+        # Select color
+        stroke_color = colors.get(style, (0, 255, 0))  # Default to green glow
+
+        cv2.polylines(temp_canvas, [np.array(smooth_points, np.int32)], isClosed=False, color=stroke_color, thickness=2)
+
+        # Apply different glow effects
+        if style in ["glow", "neon_blue", "fire"]:
+            blur_amount = 15 if style == "glow" else 25  # More blur for neon
+            glow = cv2.GaussianBlur(temp_canvas, (blur_amount, blur_amount), blur_amount)
+
+            # Increase intensity for different effects
+            glow_intensity = 1.3 if style == "glow" else 1.7
+            self.canvas = cv2.addWeighted(self.canvas, 1.0, glow, glow_intensity, 0)
+
+        
+        # Draw the original strokes again for sharper effect
+        cv2.polylines(self.canvas, [np.array(smooth_points, np.int32)], isClosed=False, color=stroke_color, thickness=2)
 
     def process_frame(self, frame):
         """Process frame to detect hand landmarks and draw on canvas"""
@@ -114,7 +137,7 @@ class PhantomPen:
             if landmarks:
                 finger, thumb = landmarks[8], landmarks[4]
                 # if the user is pinching the thumb and index finger
-                if np.hypot(thumb[1] - finger[1], thumb[2] - finger[2]) < 20:
+                if np.hypot(thumb[1] - finger[1], thumb[2] - finger[2]) < 15:
                     # Using the mean distance between the thumb and index finger
                     x1, y1 = (thumb[1] + finger[1]) // 2, (thumb[2] + finger[2]) // 2
                     self.points[-1].append((x1, y1))
