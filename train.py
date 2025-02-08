@@ -147,10 +147,43 @@ def train_siamese_network(base_dir, num_epochs=10, batch_size=8, lr=0.001):
     torch.save(model.features.state_dict(), model_path)
     print(f"Model saved successfully at {model_path}!")
 
+def get_average_embedding(base_dir, proto_dir, model):
+    """ Computes the average feature embedding for all `.npy` files in a directory. """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    users = os.listdir(os.path.join(base_dir, "real"))
+    for user in users:
+        real_dir = os.path.join(base_dir, "real", user)
+        files = [os.path.join(real_dir, f) for f in os.listdir(real_dir) if f.endswith('.npy')]
+    
+        if not files:
+            print("No .npy files found!")
+            return None
+
+        model.eval()
+        embeddings = []
+        
+        with torch.no_grad():
+            for file in files:
+                img = np.load(file)
+                img_tensor = torch.from_numpy(img).float().permute(2, 0, 1).unsqueeze(0).to(device)  # (C, H, W)
+                embedding = model.extract_features(img_tensor)
+                embeddings.append(embedding.cpu().numpy())
+
+        avg_embedding = np.mean(embeddings, axis=0)
+        np.save(f"{os.path.join(proto_dir, user)}.npy", avg_embedding)
+
 # ------------------ 5️⃣ Run Training ------------------
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train Siamese Network")
     parser.add_argument("-b", "--base_dir", type=str, default="signatures/train", help="source directory")
+    parser.add_argument("-p", "--proto_dir", type=str, default="signatures/prototypes", help="prototype directory")
+    parser.add_argument("--ckpt", type=str, default="siamese_signature_model.pth", help="checkpoint")
     args = parser.parse_args()
     
-    train_siamese_network(args.base_dir, num_epochs=10, batch_size=8, lr=0.001)
+    # train_siamese_network(args.base_dir, num_epochs=10, batch_size=8, lr=0.001)
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = SiameseNetwork().to(device)
+    get_average_embedding(args.base_dir, args.proto_dir, model)
+

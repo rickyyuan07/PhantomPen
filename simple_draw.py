@@ -130,7 +130,7 @@ class PhantomPen:
 
             # Save as .npy file
             npy_path = os.path.join(user_signature_dir, f"{self.args.signature_idx}.npy")
-            np.save(npy_path, signature_rgba)
+            np.save(npy_path, signature)
 
             # Save as PNG with transparency
             png_path = os.path.join(user_signature_dir, f"{self.args.signature_idx}.png")

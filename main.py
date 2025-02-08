@@ -3,6 +3,7 @@ from simple_draw import PhantomPen
 import argparse
 import tkinter as tk
 from simple_gui import SimpleGUI
+from authenticator import SignatureAuth
 
 
 def start_gui(is_authenticated):
@@ -22,9 +23,9 @@ if __name__ == "__main__":
     # TODO
     # arguments
     parser.add_argument("--ckpt_path", type=str, default=None, help="Path to the trained model checkpoint (e.g., siamese_signature_model.pth)")
-    parser.add_argument("--real_dir", type=str, default="signatures/rickyy", help="Path to the real signature directory")
-    parser.add_argument("--fake_dir", type=str, default="signatures/ricky", help="Path to the fake signature directory")
-
+    parser.add_argument("-n", "--name", type=str, default="", help="name to attempt auth")
+    parser.add_argument("--base_dir", type=str, default="signatures", help="Path to the signature prototypes")
+    parser.add_argument("--proto_dir", type=str, default="signatures/prototypes", help="Path to the signature prototypes")
     args = parser.parse_args()
     args.signature_dir = "./test/"
     args.signature_idx = 0
@@ -41,10 +42,15 @@ if __name__ == "__main__":
     app.run()
 
     # Run the Authenticator with the user's signature
-    # TODO
+    
+    auth = SignatureAuth(args.ckpt_path)
+    # proto_path = os.path.join(args.proto_dir, f"{args.name}.npy")
+    # auth.challenge_proto(proto_path, args.new_img_path)
+    representative_npy_path = os.path.join(args.base_dir, 'train', 'real', args.name, "0.npy")
+    new_img_path = os.path.join(user_dir, "0.npy")
+    authenticated = auth.challenge_npy(representative_npy_path, args.new_img_path)
 
     # Pop-up login success or failure message (GUI)
     # TODO
-    authenticated = True 
     start_gui(authenticated)
     

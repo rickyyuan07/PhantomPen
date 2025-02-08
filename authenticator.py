@@ -28,6 +28,7 @@ class SignatureAuth():
     def __init__(self, ckpt_path=None):
         self.encoder = Encoder(ckpt_path)
         self.encoder.eval()
+        self.threshold = 0.85
 
         self._transform = transforms.Compose([
             transforms.Resize((224, 224)),  # Resize to MobileNetV2 input size
@@ -39,6 +40,30 @@ class SignatureAuth():
         with torch.no_grad():
             features = self.encoder(img)
         return features.numpy()
+    
+    def challenge_proto(self, proto_path, npy_path):
+        proto = np.load(proto_path)
+        npy = np.load(npy_path)
+        npy = torch.from_numpy(npy).float().permute(2, 0, 1)
+        features2 = self.extract_features(npy)
+        similarity = cosine_similarity(proto, features2)[0][0]
+        print(f"Similarity: {100.0 * similarity:.2f}%")
+        if similarity > self.threshold:
+            print("Authentication Granted!")
+            return True
+        else:
+            print("Access Denied!")
+            return False
+    
+    def challenge_npy(self, npy1_path, npy2_path):
+        similarity = self.compare_npy(npy1_path, npy2_path)
+        print(f"Similarity: {100.0 * similarity:.2f}%")
+        if similarity > self.threshold:
+            print("Authentication Granted!")
+            return True
+        else:
+            print("Access Denied!")
+            return False
 
     def compare_images(self, img1_path, img2_path):
         img1 = transforms.ToTensor()(Image.open(img1_path).convert('RGB'))
