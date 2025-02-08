@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import time
+import pdb
 
 class PhantomPen:
     FRAME_WIDTH, FRAME_HEIGHT = 640, 480
@@ -21,9 +22,10 @@ class PhantomPen:
         self.mp_draw = mp.solutions.drawing_utils
 
         self.canvas = np.zeros(self.CANVAS_SHAPE, np.uint8)
-        self.points = []
+        self.points = [[]]  # Stores drawing points
         self.prev_x, self.prev_y = 0, 0
         self.past_time = time.time()
+        self.signiture_idx = 0
 
     def catmull_rom_spline(self, P0, P1, P2, P3, num_points=20):
         """Compute Catmull-Rom spline between P1 and P2."""
@@ -40,12 +42,13 @@ class PhantomPen:
 
     def smooth_draw(self):
         """Draw smooth curves using Catmull-Rom splines."""
-        if len(self.points) < 4:
+        if len(self.points[-1]) < 4:
             return
         
         smooth_points = []
-        for i in range(1, len(self.points) - 2):
-            smooth_points.extend(self.catmull_rom_spline(self.points[i-1], self.points[i], self.points[i+1], self.points[i+2]))
+        for i in range(1, len(self.points[-1]) - 2):
+            smooth_points = self.catmull_rom_spline(self.points[-1][i-1], self.points[-1][i], self.points[-1][i+1], self.points[-1][i+2])
+
 
         if len(smooth_points) > 1:
             cv2.polylines(self.canvas, [np.array(smooth_points, np.int32)], isClosed=False, color=(0, 255, 0), thickness=2)
@@ -67,14 +70,25 @@ class PhantomPen:
 
         return frame, landmarks
 
-    def draw_on_frame(self, frame):
-        """Draw overlay of the canvas on the frame"""
-        frame[:] = cv2.addWeighted(frame, 1.0, self.canvas, 0.5, 0)
-
     def reset_canvas(self):
         """Clear the drawing canvas"""
         self.canvas = np.zeros(self.CANVAS_SHAPE, np.uint8)
-        self.points.clear()
+        self.points = [[]]
+
+    def save_signiture(self):
+        try:
+            any_x = np.flatnonzero(np.any(self.canvas, axis=(1,2)))
+            any_y = np.flatnonzero(np.any(self.canvas, axis=(0,2)))
+            min_x, max_x = any_x[0], any_x[-1]
+            min_y, max_y = any_y[0], any_y[-1]
+            signiture = self.canvas[min_x:max_x, min_y:max_y, :]
+            cv2.imshow(f"Signiture {self.signiture_idx}", signiture)
+            np.save(f"signiture_{self.signiture_idx}.npy", signiture)
+
+            self.reset_canvas()
+            self.signiture_idx += 1
+        except:
+            pass
 
     def run(self):
         while True:
@@ -85,14 +99,15 @@ class PhantomPen:
             frame, landmarks = self.process_frame(frame)
 
             if landmarks:
-                # Using index finger tip (landmark id 8)
-                x1, y1 = landmarks[8][1], landmarks[8][2]
-                if self.prev_x == 0 and self.prev_y == 0:
-                    self.prev_x, self.prev_y = x1, y1
-                self.points.append((x1, y1))
-                self.smooth_draw()
+                if np.hypot(landmarks[4][1] - landmarks[8][1], landmarks[4][2] - landmarks[8][2]) < 25:
+                    # Using index finger tip (landmark id 8)
+                    x1, y1 = landmarks[8][1], landmarks[8][2]
+                    self.points[-1].append((x1, y1))
+                    self.smooth_draw()
+                else:
+                    self.points.append([])
 
-            self.draw_on_frame(frame)
+            frame = cv2.bitwise_or(frame, self.canvas)
 
             # Display FPS
             curr_time = time.time()
@@ -105,6 +120,8 @@ class PhantomPen:
             key = cv2.waitKey(1) & 0xFF
             if key == ord('c'):  # Clear canvas
                 self.reset_canvas()
+            elif key == ord('s'):
+                self.save_signiture()
             elif key == ord('q'):  # Quit
                 break
 
