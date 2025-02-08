@@ -1,13 +1,11 @@
-# PhantomPen
+# PhantomPen: Free-Hand Signature Authentication
 Tartan Hackathon 2025 at Carnegie Mellon University
-## Free-Hand Signature Authentication
-
-### Installation
+## Installation
 ```
 pip install -r requirements.txt
 ```
 
-### Usage
+## Usage
 To collect signatures sample, run this script
 ```
 python3 simply_draw.py --name <your_name>
@@ -18,7 +16,7 @@ Press 's' to save the signature.
 Press 'c' to clear the canvas.  
 Press 'q' to quit.
 
-#### Debug
+### Debug
 To test the cosine similarity between signatures, run
 ```
 python3 main.py
