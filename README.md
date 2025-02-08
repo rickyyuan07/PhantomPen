@@ -1,2 +1,2 @@
-# Tartan-Hacks-2025
+# PhantomPen
 Tartan Hackathon 2025 at Carnegie Mellon University
