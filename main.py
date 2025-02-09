@@ -33,7 +33,7 @@ if __name__ == "__main__":
    
     # from simple draw
     parser = argparse.ArgumentParser(description="Simple draw & signature collection app")
-    parser.add_argument("-st", "--style", type=str, choices=["glow", "neon_blue", "fire"], default="fire", help="Drawing style")
+    parser.add_argument("-st", "--style", type=str, choices=["glow", "neon_blue", "fire", "white"], default="fire", help="Drawing style")
     parser.add_argument("-p", "--phantom", action="store_true", help="Enable phantom effect")
     # Add necessary arguments
     # TODO

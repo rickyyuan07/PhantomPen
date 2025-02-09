@@ -30,7 +30,8 @@ class PhantomPen:
         colors = {
             "glow": (0, 255, 0),
             "neon_blue": (255, 0, 255),
-            "fire": (0, 165, 255)
+            "fire": (0, 165, 255),
+            "white": (255, 255, 255)
         }
         self.color = colors.get(self.style, (0, 255, 0))
 
@@ -197,7 +198,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simple draw & signature collection app")
     parser.add_argument("-n", "--name", type=str, default="user", help="the name of the user")
     parser.add_argument("-s", "--signature_dir", type=str, default="signatures", help="Directory to store signatures")
-    parser.add_argument("-st", "--style", type=str, choices=["glow", "neon_blue", "fire"], default="glow", help="Drawing style")
+    parser.add_argument("-st", "--style", type=str, choices=["glow", "neon_blue", "fire", "white"], default="glow", help="Drawing style")
     parser.add_argument("-p", "--phantom", action="store_true", help="Enable phantom effect")
     args = parser.parse_args()
     args.pipeline = False
