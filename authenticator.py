@@ -7,6 +7,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import pdb
 
+
 class Encoder(nn.Module):
     def __init__(self, ckpt_path=None):
         super(Encoder, self).__init__()
@@ -23,12 +24,13 @@ class Encoder(nn.Module):
         x = nn.functional.adaptive_avg_pool2d(x, (1, 1))
         x = torch.flatten(x, 1)
         return x
-    
+
+
 class SignatureAuth():
     def __init__(self, ckpt_path=None):
         self.encoder = Encoder(ckpt_path)
         self.encoder.eval()
-        self.threshold = 0.80
+        self.threshold = 0.75
 
         self._transform = transforms.Compose([
             transforms.Resize((224, 224)),  # Resize to MobileNetV2 input size
@@ -40,7 +42,7 @@ class SignatureAuth():
         with torch.no_grad():
             features = self.encoder(img)
         return features.numpy()
-    
+
     def challenge_proto(self, proto_path, npy_path):
         proto = np.load(proto_path)
         npy = np.load(npy_path)
@@ -54,7 +56,7 @@ class SignatureAuth():
         else:
             print("Access Denied!")
             return False
-    
+
     def challenge_npy(self, npy1_path, npy2_path):
         similarity = self.compare_npy(npy1_path, npy2_path)
         print(f"Similarity: {100.0 * similarity:.2f}%")
@@ -73,6 +75,7 @@ class SignatureAuth():
         similarity = cosine_similarity(features1, features2)[0][0]
         # print(f"Cosine Similarity: {similarity:.4f}")
         return similarity
+
     def compare_npy(self, npy1_path, npy2_path):
         img1 = np.load(npy1_path)
         img2 = np.load(npy2_path)

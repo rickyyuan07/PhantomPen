@@ -69,7 +69,7 @@ class PhantomPen:
         cv2.polylines(temp_canvas, [np.array(smooth_points, np.int32)], isClosed=False, color=self.color, thickness=2)
 
         # Apply different glow effects
-        if self.style in ["glow", "neon_blue", "fire"]:
+        if self.style in ["glow", "neon_blue", "fire", "white"]:
             blur_amount = 15 if self.style == "glow" else 25  # More blur for neon
             glow = cv2.GaussianBlur(temp_canvas, (blur_amount, blur_amount), blur_amount)
 
