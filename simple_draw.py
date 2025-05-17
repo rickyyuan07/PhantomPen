@@ -4,6 +4,7 @@ import mediapipe as mp
 import numpy as np
 import time
 import argparse
+from simple_face import detected_face
 
 class PhantomPen:
     FRAME_WIDTH, FRAME_HEIGHT = 640, 480
@@ -149,6 +150,10 @@ class PhantomPen:
             print(f"Error saving signature: {e}")
 
     def run(self):
+        print("run start")
+        # if not self.face_verified:
+        #     return  # Skip if face verification failed
+        
         while True:
             ret, frame = self.cap.read()
             if not ret:
@@ -194,7 +199,15 @@ class PhantomPen:
         cv2.destroyAllWindows()
         self.cap.release()
 
+    def face_verified(self):
+        self.verified = detected_face(self.args.name, self.cap)
+        if not self.verified:
+            print("Face verification failed. Aborting...")
+            return False
+        return True
+
 if __name__ == "__main__":
+    print("starting")
     parser = argparse.ArgumentParser(description="Simple draw & signature collection app")
     parser.add_argument("-n", "--name", type=str, default="user", help="the name of the user")
     parser.add_argument("-s", "--signature_dir", type=str, default="signatures", help="Directory to store signatures")
@@ -214,3 +227,4 @@ if __name__ == "__main__":
 
     app = PhantomPen(args)
     app.run()
+    
