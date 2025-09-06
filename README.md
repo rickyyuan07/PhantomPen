@@ -54,5 +54,6 @@ Then follow the GUI prompts to authenticate your signature. 🖋️
 ## 👨‍💻 Developers & Contributors
 
 Project created for Tartan Hackathon 2025 🏆 at Carnegie Mellon University.
+Short [Demo Video](https://drive.google.com/file/d/1yf-XWq-UuMV1ycRGftLV2Qk-EG6dXPkm/view?usp=sharing)
 
 For questions or contributions, feel free to open an issue or submit a pull request! 🚀
