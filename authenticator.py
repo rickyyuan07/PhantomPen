@@ -6,6 +6,7 @@ from PIL import Image
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import pdb
+import os
 
 
 class Encoder(nn.Module):
@@ -30,7 +31,7 @@ class SignatureAuth():
     def __init__(self, ckpt_path=None):
         self.encoder = Encoder(ckpt_path)
         self.encoder.eval()
-        self.threshold = 0.75
+        self.threshold = 0.85
 
         self._transform = transforms.Compose([
             transforms.Resize((224, 224)),  # Resize to MobileNetV2 input size
@@ -77,6 +78,11 @@ class SignatureAuth():
         return similarity
 
     def compare_npy(self, npy1_path, npy2_path):
+        if not os.path.exists(npy1_path):
+            raise FileNotFoundError(f"[錯誤] npy1 檔案不存在：{npy1_path}")
+        if not os.path.exists(npy2_path):
+            raise FileNotFoundError(f"[錯誤] npy2 檔案不存在：{npy2_path}")
+        
         img1 = np.load(npy1_path)
         img2 = np.load(npy2_path)
         img1 = torch.from_numpy(img1).float().permute(2, 0, 1)

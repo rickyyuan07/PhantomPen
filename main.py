@@ -19,6 +19,18 @@ def start_gui(is_authenticated):
 
     window.destroy()
 
+def face_gui(is_authenticated):
+    """Start the GUI application and show authentication result."""
+    window = tk.Tk()
+    window.withdraw()  # Hide the root window
+
+    if is_authenticated:
+        messagebox.showinfo("Authentication", "Face verification Successful! 🎉")
+    else:
+        messagebox.showerror("Authentication", "Face verification failed! ❌")
+
+    window.destroy()
+
 
 def get_username():
     """Prompt the user for their name using a GUI input box."""
@@ -27,7 +39,6 @@ def get_username():
     name = simpledialog.askstring("User Authentication", "Enter your name:")
     root.destroy()
     return name
-
 
 if __name__ == "__main__":
    
@@ -43,7 +54,7 @@ if __name__ == "__main__":
     parser.add_argument("--base_dir", type=str, default="signatures", help="Path to the signature prototypes")
     parser.add_argument("--proto_dir", type=str, default="signatures/prototypes", help="Path to the signature prototypes")
     args = parser.parse_args()
-    args.signature_dir = "./test/"  # Temporary directory for signature collection
+    args.signature_dir = os.path.join("test")  # Temporary directory for signature collection
     args.signature_idx = 0
     args.pipeline = True  # Ensure pipeline mode is enabled
 
@@ -57,15 +68,20 @@ if __name__ == "__main__":
     os.makedirs(user_dir, exist_ok=True)  # Create directory if it doesn't exist
 
     app = PhantomPen(args)
+    face_result = app.face_verified()
+    face_gui(face_result)
+    if not face_result:
+        exit(1)
     app.run()
 
     # Run the Authenticator with the user's signature
-    
     auth = SignatureAuth(args.ckpt_path)
     # proto_path = os.path.join(args.proto_dir, f"{args.name}.npy")
     # auth.challenge_proto(proto_path, args.new_img_path)
-    representative_npy_path = os.path.join(args.base_dir, 'train', 'real', args.name, "0.npy")
+    # representative_npy_path = os.path.join(args.base_dir, 'train', 'real', args.name, "0.npy")
+    representative_npy_path = os.path.join(args.base_dir, args.name, "0.npy")
     new_img_path = os.path.join(user_dir, "0.npy")
+
     authenticated = auth.challenge_npy(representative_npy_path, new_img_path)
 
     # Show authentication result in a pop-up window
